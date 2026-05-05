@@ -19,7 +19,7 @@ def macd(
     ema_slow = close.ewm(span=slow_period, adjust=False).mean()
     macd_line = ema_fast - ema_slow
     signal_line = macd_line.ewm(span=signal_period, adjust=False).mean()
-    return (macd_line - signal_line).round().astype("int64")
+    return (macd_line - signal_line).round().fillna(0).astype("int64")
 
 
 def rsi(close: pd.Series, period: int = 14) -> pd.Series:
@@ -30,7 +30,7 @@ def rsi(close: pd.Series, period: int = 14) -> pd.Series:
     avg_gain = gain.ewm(alpha=1 / period, adjust=False).mean()
     avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean()
     rs = avg_gain / avg_loss.replace(0, np.nan)
-    return (100 - 100 / (1 + rs)).round().astype("int64")
+    return (100 - 100 / (1 + rs)).round().fillna(0).astype("int64")
 
 
 def williams_r(
@@ -43,7 +43,7 @@ def williams_r(
     highest_high = high.rolling(period).max()
     lowest_low = low.rolling(period).min()
     wr = -100 * (highest_high - close) / (highest_high - lowest_low).replace(0, np.nan)
-    return wr.round().astype("int64")
+    return wr.round().fillna(0).astype("int64")
 
 
 def atr(
@@ -57,7 +57,7 @@ def atr(
     true_range = pd.concat(
         [high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1
     ).max(axis=1)
-    return true_range.ewm(alpha=1 / period, adjust=False).mean().round().astype("int64")
+    return true_range.ewm(alpha=1 / period, adjust=False).mean().round().fillna(0).astype("int64")
 
 
 def bollinger_bands(
@@ -71,7 +71,7 @@ def bollinger_bands(
     upper = sma + num_std * std
     lower = sma - num_std * std
     pct_b = 100 * (close - lower) / (upper - lower).replace(0, np.nan)
-    return pct_b.round().astype("int64")
+    return pct_b.round().fillna(0).astype("int64")
 
 
 def obv(close: pd.Series, volume: pd.Series) -> pd.Series:

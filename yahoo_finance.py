@@ -9,12 +9,6 @@ import yfinance as yf
 DATA_DIR = Path(__file__).parent / "data"
 
 # Historical periods of interest
-_PERIODS: dict[str, tuple[str, str]] = {
-    "crisis_2008": ("2007-01-01", "2009-12-31"),
-    "covid_era":   ("2020-01-01", "2021-12-31"),
-    "range_2014_2018": ("2014-01-01", "2018-12-31"),
-}
-
 
 def download(
     tickers: List[str],

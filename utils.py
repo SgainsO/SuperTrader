@@ -1,30 +1,37 @@
 from __future__ import annotations
 
-import os
+from yahoo_finance import download, save
 from enum import Enum
+from pathlib import Path
 from typing import List
 
 import pandas as pd
 
 
+DATA_DIR = Path(__file__).parent / "data"
+
+
 class Period(Enum):
     CRISIS_2008     = "crisis_2008"
+    POST_2008       = "post_2008"
     COVID_ERA       = "covid_era"
-    RANGE_2014_2018 = "range_2014_2018"
+    POST_COVID_ERA  = "post_covid_era"
+    RANGE_2014_2016 = "range_2014_2016"
+    RANGE_2017_2019 = "range_2017_2019"
 
 
-_PERIOD_DATES: dict[str, tuple[str, str]] = {
-    Period.CRISIS_2008.value:     ("2007-01-01", "2009-12-31"),
-    Period.COVID_ERA.value:       ("2020-01-01", "2021-12-31"),
-    Period.RANGE_2014_2018.value: ("2014-01-01", "2018-12-31"),
+_PERIODS: dict[str, tuple[str, str]] = {
+    "crisis_2008":     ("2007-01-01", "2009-12-31"),
+    "post_2008":       ("2010-01-31", "2012-12-31"),
+    "covid_era":       ("2020-01-01", "2021-12-31"),
+    "post_covid_era":  ("2022-01-01", "2023-12-31"), 
+    "range_2014_2016": ("2014-01-01", "2016-12-31"),
+    "range_2017_2019": ("2017-01-01", "2019-12-31")
 }
 
 
-def symbol_to_path(symbol: str, period: Period, base_dir: str | None = None) -> str:
-    """Return CSV file path given ticker symbol and period."""
-    if base_dir is None:
-        base_dir = os.environ.get("MARKET_DATA_DIR", "../data/")
-    return os.path.join(base_dir, f"{symbol}_{period.value}.csv")
+def symbol_to_path(symbol: str, period: Period) -> Path:
+    return DATA_DIR / f"{symbol}_{period.value}.csv"
 
 
 def get_data(
@@ -33,24 +40,22 @@ def get_data(
     columns: List[str],
     addSPY: bool = True,
 ) -> dict[str, pd.DataFrame]:
-    """Read stock data for given symbols from CSV files for the chosen period.
+    # Deferred import to avoid circular dependency (yahoo_finance does not import utils)
 
-    Returns a mapping of ticker → DataFrame containing only the requested columns.
-    """
-    start, end = _PERIOD_DATES[period.value]
+    start, end = _PERIODS[period.value]
 
     if addSPY and "SPY" not in symbols:
         symbols = ["SPY"] + list(symbols)
 
     results: dict[str, pd.DataFrame] = {}
     for symbol in symbols:
-        df = pd.read_csv(
-            symbol_to_path(symbol, period),
-            index_col="Date",
-            parse_dates=True,
-            usecols=["Date"] + columns,
-            na_values=["nan"],
-        )
+        path = symbol_to_path(symbol, period)
+        if not path.exists():
+            print(f"Downloading {symbol} ({period.value})...")
+            df = download([symbol], start=start, end=end)
+            save(df, path.name)
+
+        df = pd.read_csv(path, index_col=0, parse_dates=True)
         results[symbol] = df.loc[start:end, columns]
 
     return results
